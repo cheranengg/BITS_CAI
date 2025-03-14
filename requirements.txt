@@ -1,11 +1,9 @@
-os
-PyPDF2
-faiss
-numpy
 streamlit
-SentenceTransformer
-BM25Okapi
-pipeline
-re
+PyPDF2
+faiss-cpu  
+numpy
 pandas
 requests
+sentence-transformers
+rank-bm25
+transformers
