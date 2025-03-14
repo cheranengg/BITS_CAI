@@ -1,0 +1,9 @@
+os
+PyPDF2
+faiss
+numpy
+streamlit
+SentenceTransformer
+BM25Okapi
+pipeline
+re
