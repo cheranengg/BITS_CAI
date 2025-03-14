@@ -7,3 +7,5 @@ SentenceTransformer
 BM25Okapi
 pipeline
 re
+pandas
+requests
