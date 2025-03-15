@@ -6,14 +6,12 @@ import streamlit as st
 import torch
 import numpy as np
 import nltk
-nltk.download('punkt')
-nltk.download('stopwords')
 from nltk.corpus import stopwords
 from nltk.tokenize import word_tokenize
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_community.vectorstores import FAISS
-from langchain.embeddings import SentenceTransformerEmbeddings
-from langchain.retrievers import TFIDFRetriever
+from langchain_community.embeddings import SentenceTransformerEmbeddings
+from langchain_community.retrievers import TFIDFRetriever
 from langchain.retrievers import EnsembleRetriever
 from transformers import AutoTokenizer, AutoModelForCausalLM, AutoModelForSequenceClassification
 from rank_bm25 import BM25Okapi
@@ -27,7 +25,14 @@ st.markdown("Ask questions related to the last two years' financial statements."
 try:
     asyncio.get_running_loop()
 except RuntimeError:
-    asyncio.run(asyncio.sleep(0)) 
+    asyncio.run(asyncio.sleep(0))
+    
+nltk_data_path = "/home/appuser/nltk_data"
+if not os.path.exists(nltk_data_path):
+    nltk.download('punkt', download_dir=nltk_data_path)
+    nltk.download('stopwords', download_dir=nltk_data_path)
+
+nltk.data.path.append(nltk_data_path)
 
 ### **1️⃣ Data Collection & Preprocessing** """
 def load_financial_statements(directory):
