@@ -1,6 +1,6 @@
 streamlit
 PyPDF2
-torch==2.1.0+cpu -f https://download.pytorch.org/whl/torch_stable.html  # Change to cu118 for GPU
+torch  # Let pip determine the compatible version
 numpy
 nltk
 faiss-cpu  # Use faiss-gpu if using GPU
