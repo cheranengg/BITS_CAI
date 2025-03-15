@@ -1,6 +1,3 @@
---extra-index-url https://download.pytorch.org/whl/cpu
-torch==2.1.0
-
 streamlit
 PyPDF2
 numpy
@@ -12,3 +9,5 @@ langchain
 langchain-community
 transformers==4.36.2
 pip==25.0.1
+--extra-index-url https://download.pytorch.org/whl/cpu
+torch==2.1.0+cpu
