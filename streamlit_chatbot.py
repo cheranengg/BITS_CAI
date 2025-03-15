@@ -17,11 +17,17 @@ from langchain.retrievers import TFIDFRetriever
 from langchain.retrievers import EnsembleRetriever
 from transformers import AutoTokenizer, AutoModelForCausalLM, AutoModelForSequenceClassification
 from rank_bm25 import BM25Okapi
+import asyncio
 
 # Streamlit UI
 st.set_page_config(page_title="Financial RAG ChatBot", page_icon="📊", layout="centered")
 st.title("📊 Financial RAG ChatBot")
 st.markdown("Ask questions related to the last two years' financial statements.")
+
+try:
+    asyncio.get_running_loop()
+except RuntimeError:
+    asyncio.run(asyncio.sleep(0)) 
 
 ### **1️⃣ Data Collection & Preprocessing** """
 def load_financial_statements(directory):
