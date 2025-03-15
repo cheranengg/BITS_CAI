@@ -1,11 +1,11 @@
-pip==25.0.1
 streamlit
 PyPDF2
-faiss-cpu  
+torch==2.1.0+cpu -f https://download.pytorch.org/whl/torch_stable.html  
 numpy
-pandas
-requests
+nltk
+faiss-cpu  
 sentence-transformers
 rank-bm25
 transformers
-torch==2.1.0+cpu -f https://download.pytorch.org/whl/torch_stable.html
+langchain
+langchain-community
