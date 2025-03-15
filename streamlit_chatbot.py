@@ -1,4 +1,3 @@
-pip install torch==2.1.0+cpu --extra-index-url https://download.pytorch.org/whl/cpu
 import os
 import re
 import requests
@@ -17,53 +16,6 @@ from langchain_community.retrievers import TFIDFRetriever
 from transformers import AutoTokenizer, AutoModelForCausalLM
 from rank_bm25 import BM25Okapi
 
-import os
-import nltk
-import subprocess
-import sys
-
-# Install torch from the correct index
-subprocess.run([
-    sys.executable, "-m", "pip", "install", 
-    "torch==2.1.0+cpu", 
-    "--extra-index-url", "https://download.pytorch.org/whl/cpu"
-], check=True)
-
-# Function to install missing packages inside Streamlit Cloud
-def install_missing_packages():
-    packages = ["torch", "nltk"]
-    for package in packages:
-        try:
-            __import__(package)
-        except ImportError:
-            subprocess.run([sys.executable, "-m", "pip", "install", package])
-
-install_missing_packages()
-
-# Ensure NLTK data directory exists
-nltk_data_path = os.path.expanduser("~/nltk_data")  # Default path for Streamlit Cloud
-os.makedirs(nltk_data_path, exist_ok=True)
-
-# Download required NLTK datasets
-nltk.download('punkt', download_dir=nltk_data_path)
-nltk.download('stopwords', download_dir=nltk_data_path)
-
-# Add the directory to NLTK path
-nltk.data.path.append(nltk_data_path)
-
-# ✅ Fix PyTorch '__path__._path' Issue
-os.environ["TORCH_USE_RTLD_GLOBAL"] = "1"
-
-# ✅ Fix asyncio Conflict in Streamlit
-try:
-    loop = asyncio.get_running_loop()
-except RuntimeError:
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
-
-if hasattr(asyncio, "WindowsSelectorEventLoopPolicy"):
-    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
-
 # ✅ Fix NLTK Path Issue
 NLTK_PATH = "/home/appuser/nltk_data"  # Explicit path
 
@@ -80,6 +32,19 @@ for resource in ["punkt", "stopwords"]:
         nltk.data.find(f"tokenizers/{resource}")
     except LookupError:
         nltk.download(resource, download_dir=NLTK_PATH)
+
+# ✅ Fix PyTorch '__path__._path' Issue
+os.environ["TORCH_USE_RTLD_GLOBAL"] = "1"
+
+# ✅ Fix asyncio Conflict in Streamlit
+try:
+    loop = asyncio.get_running_loop()
+except RuntimeError:
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+
+if hasattr(asyncio, "WindowsSelectorEventLoopPolicy"):
+    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
 # ✅ Streamlit UI
 st.set_page_config(page_title="Financial RAG ChatBot", page_icon="📊", layout="centered")
