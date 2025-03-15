@@ -19,16 +19,19 @@ from rank_bm25 import BM25Okapi
 
 # Prevent asyncio conflict in Streamlit
 try:
-    asyncio.get_running_loop()
+    loop = asyncio.get_running_loop()
 except RuntimeError:
-    asyncio.run(asyncio.sleep(0))
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
 
-# Ensure correct NLTK setup
+# Set NLTK data path
 nltk_data_path = "/home/appuser/nltk_data"
 if not os.path.exists(nltk_data_path):
     os.makedirs(nltk_data_path)
+
 nltk.data.path.append(nltk_data_path)
 
+# Ensure only valid resources are downloaded (no 'punkt_tab')
 for resource in ["punkt", "stopwords"]:
     try:
         nltk.data.find(f"tokenizers/{resource}")
