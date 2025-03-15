@@ -1,12 +1,12 @@
 streamlit
 PyPDF2
-torch --index-url https://download.pytorch.org/whl/cpu  # Install torch for CPU
+torch==2.1.0+cpu --extra-index-url https://download.pytorch.org/whl/cpu
 numpy
 nltk
-faiss-cpu  # Use faiss-gpu if you have GPU
+faiss-cpu
 transformers==4.36.2
 sentence-transformers
 rank-bm25
 langchain
 langchain-community
-pip==25.0.1  # Upgrade pip before installing dependencies
+pip==25.0.1
