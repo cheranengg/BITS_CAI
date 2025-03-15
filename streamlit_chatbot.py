@@ -7,6 +7,8 @@ import torch
 import numpy as np
 import nltk
 import asyncio
+import subprocess
+import sys
 from nltk.corpus import stopwords
 from nltk.tokenize import word_tokenize
 from langchain.text_splitter import RecursiveCharacterTextSplitter
@@ -16,22 +18,41 @@ from langchain_community.retrievers import TFIDFRetriever
 from transformers import AutoTokenizer, AutoModelForCausalLM
 from rank_bm25 import BM25Okapi
 
-# ✅ Fix NLTK Path Issue
-NLTK_PATH = "/home/appuser/nltk_data"  # Explicit path
+# ✅ Install missing dependencies dynamically (only for Streamlit Cloud)
+def install_missing_packages():
+    packages = ["torch", "nltk"]
+    for package in packages:
+        try:
+            __import__(package)
+        except ImportError:
+            subprocess.run([sys.executable, "-m", "pip", "install", package])
 
-# Ensure the directory exists
-os.makedirs(NLTK_PATH, exist_ok=True)
+install_missing_packages()
 
-# Set NLTK path environment variable
+# ✅ Ensure correct installation of torch with CPU support
+subprocess.run([
+    sys.executable, "-m", "pip", "install",
+    "torch==2.1.0+cpu",
+    "--extra-index-url", "https://download.pytorch.org/whl/cpu"
+], check=True)
+
+# ✅ Fixing NLTK Path Issues
+NLTK_PATH = os.path.expanduser("~/nltk_data")  # Define correct path
+os.makedirs(NLTK_PATH, exist_ok=True)  # Ensure it exists
+
+# Set explicit environment variables for NLTK
 os.environ["NLTK_DATA"] = NLTK_PATH
 nltk.data.path.append(NLTK_PATH)
 
-# Ensure punkt and stopwords are downloaded correctly
+# Ensure required resources are downloaded
 for resource in ["punkt", "stopwords"]:
     try:
         nltk.data.find(f"tokenizers/{resource}")
     except LookupError:
         nltk.download(resource, download_dir=NLTK_PATH)
+
+# ✅ Print to Verify Correct NLTK Path
+print("NLTK Data Path:", nltk.data.path)
 
 # ✅ Fix PyTorch '__path__._path' Issue
 os.environ["TORCH_USE_RTLD_GLOBAL"] = "1"
@@ -167,5 +188,3 @@ if st.button("Submit"):
                     st.write(extract_answer(response))
                 else:
                     st.error("❌ No relevant financial information found.")
-    else:
-        st.warning("⚠️ Please enter a valid question.")
