@@ -21,8 +21,8 @@ import nltk
 import subprocess
 import sys
 
-# Ensure missing dependencies are installed in Streamlit Cloud
-def install_packages():
+# Function to install missing packages inside Streamlit Cloud
+def install_missing_packages():
     packages = ["torch", "nltk"]
     for package in packages:
         try:
@@ -30,15 +30,17 @@ def install_packages():
         except ImportError:
             subprocess.run([sys.executable, "-m", "pip", "install", package])
 
-install_packages()  # Run package installation
+install_missing_packages()
 
-# Fix NLTK Data Download Issue
-nltk_data_path = "/home/appuser/nltk_data"  # Default path for Streamlit Cloud
-if not os.path.exists(nltk_data_path):
-    os.makedirs(nltk_data_path)
+# Ensure NLTK data directory exists
+nltk_data_path = os.path.expanduser("~/nltk_data")  # Default path for Streamlit Cloud
+os.makedirs(nltk_data_path, exist_ok=True)
 
+# Download required NLTK datasets
 nltk.download('punkt', download_dir=nltk_data_path)
 nltk.download('stopwords', download_dir=nltk_data_path)
+
+# Add the directory to NLTK path
 nltk.data.path.append(nltk_data_path)
 
 # ✅ Fix PyTorch '__path__._path' Issue
