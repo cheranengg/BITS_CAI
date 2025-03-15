@@ -1,10 +1,10 @@
 streamlit
 PyPDF2
-torch  # Let pip determine the compatible version
+torch --index-url https://download.pytorch.org/whl/cpu  # Install torch for CPU
 numpy
 nltk
-faiss-cpu  # Use faiss-gpu if using GPU
-transformers==4.36.2  # Update to a known stable version
+faiss-cpu  # Use faiss-gpu if you have GPU
+transformers==4.36.2
 sentence-transformers
 rank-bm25
 langchain
