@@ -1,11 +1,10 @@
 streamlit
 PyPDF2
-faiss-cpu 
+faiss-cpu  
 numpy
 pandas
 requests
 sentence-transformers
 rank-bm25
 transformers
-torch 
-nltk
+torch==2.1.0+cpu -f https://download.pytorch.org/whl/torch_stable.html  
