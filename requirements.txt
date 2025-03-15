@@ -1,9 +1,10 @@
 streamlit
 PyPDF2
-faiss-cpu  
+faiss-cpu 
 numpy
 pandas
 requests
 sentence-transformers
 rank-bm25
 transformers
+torch 
