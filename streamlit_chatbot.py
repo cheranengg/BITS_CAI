@@ -17,13 +17,13 @@ from langchain.retrievers import EnsembleRetriever
 from transformers import AutoTokenizer, AutoModelForCausalLM, AutoModelForSequenceClassification
 from rank_bm25 import BM25Okapi
 
-# Ensure asyncio doesn't conflict with Streamlit
+# ✅ Fix: Prevent asyncio conflict in Streamlit
 try:
     asyncio.get_running_loop()
 except RuntimeError:
     asyncio.run(asyncio.sleep(0))
 
-# Set up NLTK data path and only download if missing
+# ✅ Fix: Ensure correct NLTK setup
 nltk_data_path = "/home/appuser/nltk_data"
 if not os.path.exists(nltk_data_path):
     os.makedirs(nltk_data_path)
@@ -35,7 +35,7 @@ for resource in ["punkt", "stopwords"]:
     except LookupError:
         nltk.download(resource, download_dir=nltk_data_path)
 
-# Streamlit UI Setup
+# ✅ Streamlit UI Setup
 st.set_page_config(page_title="Financial RAG ChatBot", page_icon="📊", layout="centered")
 st.title("📊 Financial RAG ChatBot")
 st.markdown("Ask questions related to the last two years' financial statements.")
