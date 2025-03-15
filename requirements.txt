@@ -1,12 +1,12 @@
 streamlit
 PyPDF2
-torch  # Install dynamically based on Python version
+torch
 numpy
 nltk
-faiss-cpu  # Use faiss-gpu if running on GPU
+faiss-cpu  # Use faiss-gpu if using GPU
 sentence-transformers
 rank-bm25
 transformers
 langchain
 langchain-community
-pip==25.0.1  # Upgrade pip before installing dependencies
+pip==25.0.1  # Upgrade pip to avoid issues
