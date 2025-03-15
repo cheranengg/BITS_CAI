@@ -17,6 +17,10 @@ from transformers import AutoTokenizer, AutoModelForCausalLM, AutoModelForSequen
 from rank_bm25 import BM25Okapi
 import asyncio
 
+import nltk
+nltk.download('punkt')
+nltk.download('stopwords')
+
 # Streamlit UI
 st.set_page_config(page_title="Financial RAG ChatBot", page_icon="📊", layout="centered")
 st.title("📊 Financial RAG ChatBot")
