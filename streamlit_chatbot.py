@@ -17,13 +17,13 @@ from langchain.retrievers import EnsembleRetriever
 from transformers import AutoTokenizer, AutoModelForCausalLM, AutoModelForSequenceClassification
 from rank_bm25 import BM25Okapi
 
-# ✅ Fix: Prevent asyncio conflict in Streamlit
+# Prevent asyncio conflict in Streamlit
 try:
     asyncio.get_running_loop()
 except RuntimeError:
     asyncio.run(asyncio.sleep(0))
 
-# ✅ Fix: Ensure correct NLTK setup
+# Ensure correct NLTK setup
 nltk_data_path = "/home/appuser/nltk_data"
 if not os.path.exists(nltk_data_path):
     os.makedirs(nltk_data_path)
