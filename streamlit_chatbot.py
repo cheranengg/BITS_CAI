@@ -1,128 +1,156 @@
 import os
-import PyPDF2
-import faiss
-import numpy as np
-import streamlit as st
-from sentence_transformers import SentenceTransformer, CrossEncoder
-from rank_bm25 import BM25Okapi
-from transformers import pipeline
 import re
+import requests
+import PyPDF2
+import streamlit as st
+import torch
+import numpy as np
 import nltk
-from nltk.tokenize import sent_tokenize
+from nltk.corpus import stopwords
+from nltk.tokenize import word_tokenize
+from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain_community.vectorstores import FAISS
+from langchain.embeddings import SentenceTransformerEmbeddings
+from langchain.retrievers import TFIDFRetriever
+from langchain.retrievers import EnsembleRetriever
+from transformers import AutoTokenizer, AutoModelForCausalLM, AutoModelForSequenceClassification
+from rank_bm25 import BM25Okapi
+
+nltk.download('stopwords')
+nltk.download('punkt')
 
 # Streamlit UI
 st.set_page_config(page_title="Financial RAG ChatBot", page_icon="📊", layout="centered")
 st.title("📊 Financial RAG ChatBot")
 st.markdown("Ask questions related to the last two years' financial statements.")
 
-# Load embedding model
-embedding_model = SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2")
-reranker = CrossEncoder("cross-encoder/ms-marco-MiniLM-L-6-v2")
+### **1️⃣ Data Collection & Preprocessing** """
+def load_financial_statements(directory):
+    """Loads financial statements from a directory."""
+    documents = []
+    for filename in os.listdir(directory):
+        if filename.endswith(".pdf"):
+            try:
+                with open(os.path.join(directory, filename), "rb") as file:
+                    reader = PyPDF2.PdfReader(file)
+                    text = ""
+                    for page_num in range(len(reader.pages)):
+                        page = reader.pages[page_num]
+                        text += page.extract_text() or ""  
+                    documents.append(text)  # Store extracted text
+            except (FileNotFoundError, PyPDF2.errors.PdfReadError) as e:
+                st.error(f"Error loading PDF: {e}")
+    return documents
 
-# Load summarization model
-summarizer = pipeline("summarization")
+### **2️⃣ Text Chunking for Retrieval** """
+def chunk_documents(documents, chunk_size=500, overlap=50):
+    """Chunks financial documents using optimal chunk size & overlap."""
+    text_splitter = RecursiveCharacterTextSplitter(chunk_size=chunk_size, chunk_overlap=overlap)
+    chunks = text_splitter.create_documents(["".join(documents)])
+    return chunks
 
-# PDF Directory
-dataset_folder = "."
+### **3️⃣ FAISS Vector Store Creation** """
+def create_vectorstore(chunks):
+    """Creates a FAISS vector store using Sentence Transformers."""
+    embeddings = SentenceTransformerEmbeddings(model_name="all-mpnet-base-v2")
+    vectorstore = FAISS.from_documents(chunks, embeddings)
+    return vectorstore
 
-# Extract text from PDFs with improved chunking
-def extract_text_from_pdfs(pdf_files):
-    text_chunks = []
-    for pdf_path in pdf_files:
-        with open(pdf_path, "rb") as f:
-            reader = PyPDF2.PdfReader(f)
-            for page in reader.pages:
-                text = page.extract_text()
-                sentences = sent_tokenize(text)
-                chunk = []
-                for sentence in sentences:
-                    chunk.append(sentence)
-                    if len(" ".join(chunk)) > 300:
-                        text_chunks.append(" ".join(chunk))
-                        chunk = []
-                if chunk:
-                    text_chunks.append(" ".join(chunk))
-    return text_chunks
+### **4️⃣ BM25 Sparse Vector Retrieval** """
+def create_bm25_retriever(chunks):
+    """Creates a BM25 retriever."""
+    tokenized_corpus = [word_tokenize(doc.page_content.lower()) for doc in chunks]
+    bm25 = BM25Okapi(tokenized_corpus)
+    return bm25, chunks
 
-pdf_files = [os.path.join(dataset_folder, file) for file in os.listdir(dataset_folder) if file.endswith(".pdf")]
-text_chunks = extract_text_from_pdfs(pdf_files)
-tokenized_corpus = [chunk.split() for chunk in text_chunks]
+def bm25_search(query, bm25, documents, k=4):
+    """Retrieves top-k documents using BM25."""
+    query_tokens = word_tokenize(query.lower())
+    scores = bm25.get_scores(query_tokens)
+    top_indices = sorted(range(len(scores)), key=lambda i: scores[i], reverse=True)[:k]
+    return [documents[i] for i in top_indices]
 
-# Initialize BM25
-bm25 = BM25Okapi(tokenized_corpus)
+### **5️⃣ Hybrid Search: Combining BM25 + FAISS Results** """
+def combine_results(retrieved_faiss, retrieved_bm25):
+    """Combines FAISS & BM25 results without duplication."""
+    combined = []
+    seen = set()
+    for doc in retrieved_faiss + retrieved_bm25:
+        if doc.page_content not in seen:
+            combined.append(doc)
+            seen.add(doc.page_content)
+    return combined
 
-# Encode text using embeddings
-embeddings = embedding_model.encode(text_chunks, convert_to_numpy=True)
+### **6️⃣ DistilGPT-2 as SLM for Response Generation** """
+def load_distilgpt2():
+    """Loads the DistilGPT-2 model & tokenizer."""
+    tokenizer = AutoTokenizer.from_pretrained("distilgpt2")
+    model = AutoModelForCausalLM.from_pretrained("distilgpt2")
+    return tokenizer, model
 
-# Create FAISS index
-index = faiss.IndexFlatL2(embeddings.shape[1])
-index.add(embeddings)
+def generate_response_distilgpt2(query, context, tokenizer, model, max_new_tokens=100):
+    """Generates response using DistilGPT-2."""
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    model = model.to(device)
 
-# Guard Rails - Validate user query with LLM-based filtering
-def validate_query(query):
-    prohibited_patterns = [
-        r'\b(violence|hate speech|illegal activity|politics|religion|stupid|dumb|bad|useless)\b',
-        r'[^a-zA-Z0-9\s?]',
-        r'\b(capital of|who is the president of|weather in|history of)\b'
-    ]
-    if any(re.search(pattern, query, re.IGNORECASE) for pattern in prohibited_patterns):
-        return False
-    return True
+    input_text = f"Context:\n{context}\n\nQuestion: {query}\nAnswer:"
+    inputs = tokenizer(input_text, return_tensors="pt", max_length=1024, truncation=True).to(device)
 
-# Hybrid Retrieval with Re-ranking
-def hybrid_retrieval(query, top_k=5):
-    tokenized_query = query.split()
-    bm25_scores = bm25.get_scores(tokenized_query)
-    bm25_top_k_indices = np.argsort(bm25_scores)[-top_k:][::-1]
+    with torch.no_grad():
+        outputs = model.generate(**inputs, max_new_tokens=max_new_tokens, num_beams=5, early_stopping=True, pad_token_id=tokenizer.eos_token_id)
+    response = tokenizer.decode(outputs[0], skip_special_tokens=True)
+    return response
 
-    query_embedding = embedding_model.encode([query], convert_to_numpy=True)
-    distances, dense_top_k_indices = index.search(query_embedding, top_k)
-    dense_scores = 1 / (1 + distances)
+### **7️⃣ User Input Guardrails** """
+def is_financial_query(query):
+    """Filters out non-financial queries using NLP-based keyword validation."""
+    financial_keywords = ["revenue", "profit", "loss", "cash flow", "balance sheet", "income statement", "financial", "earnings", "assets", "liabilities", "equity", "reserves", "dividend"]
+    query_tokens = word_tokenize(query.lower())
+    filtered_tokens = [w for w in query_tokens if w not in stopwords.words('english')]
 
-    retrieved_texts = {}
-    for i, idx in enumerate(bm25_top_k_indices):
-        retrieved_texts[idx] = bm25_scores[idx] * 2.0
-    for i, idx in enumerate(dense_top_k_indices[0]):
-        retrieved_texts[idx] = retrieved_texts.get(idx, 0) + dense_scores[0][i] * 1.5
+    return any(keyword in filtered_tokens for keyword in financial_keywords)
 
-    sorted_indices = sorted(retrieved_texts, key=retrieved_texts.get, reverse=True)
+### **8️⃣ Output Formatting & Confidence Score Calculation** """
+def extract_answer(output):
+    """Extracts only the generated answer from response."""
+    match = re.search(r"Answer:\s*(.+)", output, re.DOTALL)
+    return match.group(1).strip() if match else "Answer not found."
 
-    # Re-ranking with CrossEncoder
-    if sorted_indices:
-        query_doc_pairs = [[query, text_chunks[idx]] for idx in sorted_indices[:top_k]]
-        rerank_scores = reranker.predict(query_doc_pairs)
-        sorted_indices = [idx for _, idx in sorted(zip(rerank_scores, sorted_indices), reverse=True)]
+def calculate_confidence(query, retrieved_docs):
+    """Assigns a confidence score based on retrieval relevance."""
+    return min(len(retrieved_docs) * 10, 100)  # Example formula (scaling factor)
 
-    max_confidence_score = retrieved_texts[sorted_indices[0]] if sorted_indices else 0
-    return [text_chunks[idx] for idx in sorted_indices[:top_k]], max_confidence_score
+### **9️⃣ RAG Query Execution: Testing & Validation** """
+# Load financial documents & create embeddings
+documents = load_financial_statements(".")
+chunks = chunk_documents(documents)
+bm25, bm25_docs = create_bm25_retriever(chunks)
+vectorstore = create_vectorstore(chunks)
 
-# Hybrid Retrieval with Summarization
-def hybrid_retrieval_with_summary(query, top_k=3):
-    retrieved_texts, confidence_score = hybrid_retrieval(query, top_k)
-    summarized_texts = []
-    for text in retrieved_texts:
-        if len(text) > 50:
-            summary = summarizer(text, max_length=100, min_length=50, do_sample=False)
-            summarized_texts.append(summary[0]["summary_text"])
-        else:
-            summarized_texts.append(text)
-    return summarized_texts, confidence_score
+# Load the Small Language Model (SLM)
+tokenizer, model = load_distilgpt2()
 
-# Add a text input field for user questions
-user_query = st.text_input("🔍 Ask a financial question:", "")
+""" **🔍 Streamlit UI & Response Handling** """
+user_query = st.text_input("🔍 Ask a financial question:")
 
-# Display results when the user clicks submit
 if st.button("Submit"):
     if user_query:
-        if not validate_query(user_query):
-            st.error("⚠️ Your query is not relevant to financial reports. Please enter a valid financial question.")
+        if not is_financial_query(user_query):
+            st.error("⚠️ This does not appear to be a financial question. Please ask a relevant query.")
         else:
-            with st.spinner("Searching and summarizing..."):
-                summarized_response, confidence_score = hybrid_retrieval_with_summary(user_query)
-                if summarized_response:
-                    st.success(f"✅ Answer Found (Confidence: {confidence_score:.2f})")
-                    st.write("\n\n".join(summarized_response))
+            with st.spinner("🔎 Searching for relevant financial data..."):
+                retrieved_faiss = vectorstore.as_retriever(search_kwargs={"k": 4}).get_relevant_documents(user_query)
+                retrieved_bm25 = bm25_search(user_query, bm25, bm25_docs, k=4)
+                retrieved_docs = combine_results(retrieved_faiss, retrieved_bm25)
+
+                if retrieved_docs:
+                    context = [doc.page_content for doc in retrieved_docs[:2]]
+                    response = generate_response_distilgpt2(user_query, " ".join(context), tokenizer, model)
+                    confidence_score = calculate_confidence(user_query, retrieved_docs)
+
+                    st.success(f"✅ Answer Found (Confidence: {confidence_score:.2f}%)")
+                    st.write(extract_answer(response))
                 else:
-                    st.error("❌ No relevant information found.")
+                    st.error("❌ No relevant financial information found.")
     else:
-        st.warning("⚠️ Please enter a question.")
+        st.warning("⚠️ Please enter a valid question.")
