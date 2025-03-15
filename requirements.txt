@@ -1,20 +1,12 @@
-# Essential dependencies
 streamlit
 PyPDF2
-torch==2.1.0  # Specify a stable version of torch
+torch  # Let pip determine the compatible version
 numpy
 nltk
-faiss-cpu  # Use faiss-gpu if running on a GPU instance
-
-# Transformer & NLP dependencies
-transformers==4.36.2  # Ensures compatibility with existing code
+faiss-cpu  # Use faiss-gpu if using GPU
+transformers==4.36.2  # Update to a known stable version
 sentence-transformers
 rank-bm25
 langchain
 langchain-community
-
-# Fixing version conflicts
-pip==25.0.1  # Ensures latest pip to prevent dependency issues
-
-# Additional dependencies (if required for compatibility)
-asyncio
+pip==25.0.1  # Upgrade pip before installing dependencies
