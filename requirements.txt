@@ -4,6 +4,7 @@ torch  # Let pip determine the compatible version
 numpy
 nltk
 faiss-cpu  # Use faiss-gpu if using GPU
+transformers==4.36.2  # Update to a known stable version
 sentence-transformers
 rank-bm25
 transformers
