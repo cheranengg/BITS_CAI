@@ -1,3 +1,4 @@
+pip install torch==2.1.0+cpu --extra-index-url https://download.pytorch.org/whl/cpu
 import os
 import re
 import requests
