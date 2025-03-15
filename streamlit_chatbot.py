@@ -16,7 +16,10 @@ from langchain_community.retrievers import TFIDFRetriever
 from transformers import AutoTokenizer, AutoModelForCausalLM
 from rank_bm25 import BM25Okapi
 
-# ✅ 1️⃣ Fix asyncio conflict in Streamlit & PyTorch
+# ✅ 1️⃣ Fix PyTorch '__path__._path' Issue
+os.environ["TORCH_USE_RTLD_GLOBAL"] = "1"
+
+# ✅ 2️⃣ Fix asyncio Conflict in Streamlit
 try:
     loop = asyncio.get_running_loop()
 except RuntimeError:
@@ -26,22 +29,19 @@ except RuntimeError:
 if hasattr(asyncio, "WindowsSelectorEventLoopPolicy"):
     asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
-# ✅ 2️⃣ Fix PyTorch '__path__._path' instantiation issue
-os.environ["TORCH_USE_RTLD_GLOBAL"] = "1"
+# ✅ 3️⃣ Ensure Correct NLTK Path & Fix Lookup Errors
+NLTK_PATH = os.path.expanduser("~") + "/nltk_data"
+if not os.path.exists(NLTK_PATH):
+    os.makedirs(NLTK_PATH)
 
-# ✅ 3️⃣ Ensure NLTK Path & Correct Downloads
-nltk_data_path = os.path.expanduser("~") + "/nltk_data"
-if not os.path.exists(nltk_data_path):
-    os.makedirs(nltk_data_path)
+nltk.data.path.append(NLTK_PATH)
 
-nltk.data.path.append(nltk_data_path)
-
-# Only download necessary NLTK resources
+# Ensure all required NLTK resources are downloaded
 for resource in ["punkt", "stopwords"]:
     try:
         nltk.data.find(f"tokenizers/{resource}")
     except LookupError:
-        nltk.download(resource, download_dir=nltk_data_path)
+        nltk.download(resource, download_dir=NLTK_PATH)
 
 # ✅ 4️⃣ Streamlit UI Setup
 st.set_page_config(page_title="Financial RAG ChatBot", page_icon="📊", layout="centered")
