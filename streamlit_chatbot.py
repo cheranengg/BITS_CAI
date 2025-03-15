@@ -6,6 +6,8 @@ import streamlit as st
 import torch
 import numpy as np
 import nltk
+nltk.download('punkt')
+nltk.download('stopwords')
 from nltk.corpus import stopwords
 from nltk.tokenize import word_tokenize
 from langchain.text_splitter import RecursiveCharacterTextSplitter
@@ -15,9 +17,6 @@ from langchain.retrievers import TFIDFRetriever
 from langchain.retrievers import EnsembleRetriever
 from transformers import AutoTokenizer, AutoModelForCausalLM, AutoModelForSequenceClassification
 from rank_bm25 import BM25Okapi
-
-nltk.download('stopwords')
-nltk.download('punkt')
 
 # Streamlit UI
 st.set_page_config(page_title="Financial RAG ChatBot", page_icon="📊", layout="centered")
