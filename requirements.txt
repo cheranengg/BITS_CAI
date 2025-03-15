@@ -1,11 +1,12 @@
 streamlit
 PyPDF2
-torch==2.1.0+cpu -f https://download.pytorch.org/whl/torch_stable.html  
+torch==2.1.0+cpu -f https://download.pytorch.org/whl/torch_stable.html  # Use cu118 for GPU
 numpy
 nltk
-faiss-cpu  
+faiss-cpu  # Use faiss-gpu if running on GPU
 sentence-transformers
 rank-bm25
 transformers
 langchain
 langchain-community
+pip==25.0.1  # Force upgrade pip to avoid errors
