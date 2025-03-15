@@ -31,6 +31,7 @@ if hasattr(asyncio, "WindowsSelectorEventLoopPolicy"):
 
 # ✅ 3️⃣ Fix NLTK Data Path & Ensure Download
 NLTK_PATH = os.path.expanduser("~") + "/nltk_data"
+
 if not os.path.exists(NLTK_PATH):
     os.makedirs(NLTK_PATH)
 
@@ -41,6 +42,9 @@ for resource in ["punkt", "stopwords"]:
         nltk.data.find(f"tokenizers/{resource}")
     except LookupError:
         nltk.download(resource, download_dir=NLTK_PATH)
+
+# ✅ Force NLTK to Look in Correct Directory
+os.environ["NLTK_DATA"] = NLTK_PATH
 
 # ✅ 4️⃣ Streamlit UI Setup
 st.set_page_config(page_title="Financial RAG ChatBot", page_icon="📊", layout="centered")
