@@ -16,7 +16,7 @@ from langchain_community.retrievers import TFIDFRetriever
 from transformers import AutoTokenizer, AutoModelForCausalLM
 from rank_bm25 import BM25Okapi
 
-# ✅ 1️⃣ Fix PyTorch '__path__._path' Issue
+# ✅ 1️⃣ Fix PyTorch '__path__._path' Issue (Set before importing torch)
 os.environ["TORCH_USE_RTLD_GLOBAL"] = "1"
 
 # ✅ 2️⃣ Fix asyncio Conflict in Streamlit
@@ -29,22 +29,22 @@ except RuntimeError:
 if hasattr(asyncio, "WindowsSelectorEventLoopPolicy"):
     asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
-# ✅ 3️⃣ Fix NLTK Data Path & Ensure Download
-NLTK_PATH = os.path.expanduser("~") + "/nltk_data"
+# ✅ 3️⃣ Force NLTK Data Path & Download Fix
+NLTK_PATH = os.path.join(os.path.expanduser("~"), "nltk_data")
 
-if not os.path.exists(NLTK_PATH):
-    os.makedirs(NLTK_PATH)
+# Ensure the directory exists
+os.makedirs(NLTK_PATH, exist_ok=True)
 
+# Set NLTK path environment variable
+os.environ["NLTK_DATA"] = NLTK_PATH
 nltk.data.path.append(NLTK_PATH)
 
+# Force-download required nltk resources
 for resource in ["punkt", "stopwords"]:
     try:
         nltk.data.find(f"tokenizers/{resource}")
     except LookupError:
         nltk.download(resource, download_dir=NLTK_PATH)
-
-# ✅ Force NLTK to Look in Correct Directory
-os.environ["NLTK_DATA"] = NLTK_PATH
 
 # ✅ 4️⃣ Streamlit UI Setup
 st.set_page_config(page_title="Financial RAG ChatBot", page_icon="📊", layout="centered")
