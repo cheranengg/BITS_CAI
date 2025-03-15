@@ -17,21 +17,26 @@ from langchain.retrievers import EnsembleRetriever
 from transformers import AutoTokenizer, AutoModelForCausalLM, AutoModelForSequenceClassification
 from rank_bm25 import BM25Okapi
 
-# Prevent asyncio conflict in Streamlit
+# ✅ Fix: Prevent asyncio conflicts in Streamlit & PyTorch
 try:
     loop = asyncio.get_running_loop()
 except RuntimeError:
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
 
-# Set NLTK data path
-nltk_data_path = "/home/appuser/nltk_data"
+if hasattr(asyncio, "WindowsSelectorEventLoopPolicy"):
+    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+
+# ✅ Fix: Force PyTorch to register internal classes correctly
+os.environ["TORCH_USE_RTLD_GLOBAL"] = "1"
+
+# ✅ Fix: Ensure correct NLTK setup
+nltk_data_path = os.path.expanduser("~") + "/nltk_data"
 if not os.path.exists(nltk_data_path):
     os.makedirs(nltk_data_path)
 
 nltk.data.path.append(nltk_data_path)
 
-# Ensure only valid resources are downloaded (no 'punkt_tab')
 for resource in ["punkt", "stopwords"]:
     try:
         nltk.data.find(f"tokenizers/{resource}")
