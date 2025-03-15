@@ -1,6 +1,8 @@
 streamlit
 PyPDF2
 numpy
+--extra-index-url https://download.pytorch.org/whl/cpu
+torch==2.1.0+cpu
 nltk
 faiss-cpu
 transformers==4.36.2
