@@ -16,6 +16,31 @@ from langchain_community.retrievers import TFIDFRetriever
 from transformers import AutoTokenizer, AutoModelForCausalLM
 from rank_bm25 import BM25Okapi
 
+import os
+import nltk
+import subprocess
+import sys
+
+# Ensure missing dependencies are installed in Streamlit Cloud
+def install_packages():
+    packages = ["torch", "nltk"]
+    for package in packages:
+        try:
+            __import__(package)
+        except ImportError:
+            subprocess.run([sys.executable, "-m", "pip", "install", package])
+
+install_packages()  # Run package installation
+
+# Fix NLTK Data Download Issue
+nltk_data_path = "/home/appuser/nltk_data"  # Default path for Streamlit Cloud
+if not os.path.exists(nltk_data_path):
+    os.makedirs(nltk_data_path)
+
+nltk.download('punkt', download_dir=nltk_data_path)
+nltk.download('stopwords', download_dir=nltk_data_path)
+nltk.data.path.append(nltk_data_path)
+
 # ✅ Fix PyTorch '__path__._path' Issue
 os.environ["TORCH_USE_RTLD_GLOBAL"] = "1"
 
