@@ -17,7 +17,6 @@ from transformers import AutoTokenizer, AutoModelForCausalLM, AutoModelForSequen
 from rank_bm25 import BM25Okapi
 import asyncio
 
-import nltk
 nltk.download('punkt')
 nltk.download('stopwords')
 
