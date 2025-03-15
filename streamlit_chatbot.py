@@ -16,10 +16,10 @@ from langchain_community.retrievers import TFIDFRetriever
 from transformers import AutoTokenizer, AutoModelForCausalLM
 from rank_bm25 import BM25Okapi
 
-# ✅ 1️⃣ Fix PyTorch '__path__._path' Issue (Set before importing torch)
+# ✅ Fix PyTorch '__path__._path' Issue
 os.environ["TORCH_USE_RTLD_GLOBAL"] = "1"
 
-# ✅ 2️⃣ Fix asyncio Conflict in Streamlit
+# ✅ Fix asyncio Conflict in Streamlit
 try:
     loop = asyncio.get_running_loop()
 except RuntimeError:
@@ -29,8 +29,8 @@ except RuntimeError:
 if hasattr(asyncio, "WindowsSelectorEventLoopPolicy"):
     asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
-# ✅ 3️⃣ Force NLTK Data Path & Download Fix
-NLTK_PATH = os.path.join(os.path.expanduser("~"), "nltk_data")
+# ✅ Fix NLTK Path Issue
+NLTK_PATH = "/home/appuser/nltk_data"  # Explicit path
 
 # Ensure the directory exists
 os.makedirs(NLTK_PATH, exist_ok=True)
@@ -39,19 +39,19 @@ os.makedirs(NLTK_PATH, exist_ok=True)
 os.environ["NLTK_DATA"] = NLTK_PATH
 nltk.data.path.append(NLTK_PATH)
 
-# Force-download required nltk resources
+# Ensure punkt and stopwords are downloaded correctly
 for resource in ["punkt", "stopwords"]:
     try:
         nltk.data.find(f"tokenizers/{resource}")
     except LookupError:
         nltk.download(resource, download_dir=NLTK_PATH)
 
-# ✅ 4️⃣ Streamlit UI Setup
+# ✅ Streamlit UI
 st.set_page_config(page_title="Financial RAG ChatBot", page_icon="📊", layout="centered")
 st.title("📊 Financial RAG ChatBot")
 st.markdown("Ask questions related to the last two years' financial statements.")
 
-# ✅ 5️⃣ Load Financial PDFs
+# ✅ Load Financial PDFs
 def load_financial_statements(directory):
     """Loads financial statements from PDFs in the directory."""
     documents = []
@@ -69,19 +69,19 @@ def load_financial_statements(directory):
                 st.error(f"Error loading PDF: {e}")
     return documents
 
-# ✅ 6️⃣ Text Chunking for Retrieval
+# ✅ Text Chunking for Retrieval
 def chunk_documents(documents, chunk_size=500, overlap=50):
     """Splits documents into chunks using RecursiveCharacterTextSplitter."""
     text_splitter = RecursiveCharacterTextSplitter(chunk_size=chunk_size, chunk_overlap=overlap)
     return text_splitter.create_documents(["".join(documents)])
 
-# ✅ 7️⃣ FAISS Vector Store Creation
+# ✅ FAISS Vector Store Creation
 def create_vectorstore(chunks):
     """Creates a FAISS vector store using Sentence Transformers."""
     embeddings = SentenceTransformerEmbeddings(model_name="all-mpnet-base-v2")
     return FAISS.from_documents(chunks, embeddings)
 
-# ✅ 8️⃣ BM25 Sparse Vector Retrieval
+# ✅ BM25 Sparse Vector Retrieval
 def create_bm25_retriever(chunks):
     """Creates a BM25 retriever."""
     tokenized_corpus = [word_tokenize(doc.page_content.lower()) for doc in chunks]
@@ -94,14 +94,14 @@ def bm25_search(query, bm25, documents, k=4):
     top_indices = sorted(range(len(scores)), key=lambda i: scores[i], reverse=True)[:k]
     return [documents[i] for i in top_indices]
 
-# ✅ 9️⃣ Hybrid Search: Combining BM25 + FAISS
+# ✅ Hybrid Search: Combining BM25 + FAISS
 def combine_results(retrieved_faiss, retrieved_bm25):
     """Combines FAISS & BM25 results without duplication."""
     seen = set()
     combined = [doc for doc in retrieved_faiss + retrieved_bm25 if doc.page_content not in seen and not seen.add(doc.page_content)]
     return combined
 
-# ✅ 🔟 DistilGPT-2 as Response Generator
+# ✅ DistilGPT-2 as Response Generator
 def load_distilgpt2():
     """Loads DistilGPT-2 model & tokenizer."""
     tokenizer = AutoTokenizer.from_pretrained("distilgpt2")
@@ -120,14 +120,14 @@ def generate_response_distilgpt2(query, context, tokenizer, model, max_new_token
         outputs = model.generate(**inputs, max_new_tokens=max_new_tokens, num_beams=5, early_stopping=True, pad_token_id=tokenizer.eos_token_id)
     return tokenizer.decode(outputs[0], skip_special_tokens=True)
 
-# ✅ 🔟 User Input Guardrails
+# ✅ User Input Guardrails
 def is_financial_query(query):
     """Filters out non-financial queries using NLP-based keyword validation."""
     financial_keywords = ["revenue", "profit", "loss", "cash flow", "balance sheet", "income statement", "financial", "earnings", "assets", "liabilities", "equity", "reserves", "dividend"]
     query_tokens = word_tokenize(query.lower())
     return any(word in query_tokens for word in financial_keywords)
 
-# ✅ 🔟 Output Formatting & Confidence Score Calculation
+# ✅ Output Formatting & Confidence Score Calculation
 def extract_answer(output):
     """Extracts the generated answer from response."""
     match = re.search(r"Answer:\s*(.+)", output, re.DOTALL)
@@ -137,7 +137,7 @@ def calculate_confidence(query, retrieved_docs):
     """Assigns a confidence score based on retrieval relevance."""
     return min(len(retrieved_docs) * 10, 100)
 
-# ✅ 🔟 RAG Query Execution: Testing & Validation
+# ✅ RAG Query Execution: Testing & Validation
 documents = load_financial_statements(".")
 chunks = chunk_documents(documents)
 bm25, bm25_docs = create_bm25_retriever(chunks)
@@ -145,7 +145,7 @@ vectorstore = create_vectorstore(chunks)
 
 tokenizer, model = load_distilgpt2()
 
-# ✅ 🔍 Streamlit UI & Response Handling
+# ✅ Streamlit UI & Response Handling
 user_query = st.text_input("🔍 Ask a financial question:")
 
 if st.button("Submit"):
