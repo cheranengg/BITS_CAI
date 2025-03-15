@@ -29,14 +29,13 @@ except RuntimeError:
 if hasattr(asyncio, "WindowsSelectorEventLoopPolicy"):
     asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
-# ✅ 3️⃣ Ensure Correct NLTK Path & Fix Lookup Errors
+# ✅ 3️⃣ Fix NLTK Data Path & Ensure Download
 NLTK_PATH = os.path.expanduser("~") + "/nltk_data"
 if not os.path.exists(NLTK_PATH):
     os.makedirs(NLTK_PATH)
 
 nltk.data.path.append(NLTK_PATH)
 
-# Ensure all required NLTK resources are downloaded
 for resource in ["punkt", "stopwords"]:
     try:
         nltk.data.find(f"tokenizers/{resource}")
