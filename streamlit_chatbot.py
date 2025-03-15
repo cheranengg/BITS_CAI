@@ -22,6 +22,13 @@ import nltk
 import subprocess
 import sys
 
+# Install torch from the correct index
+subprocess.run([
+    sys.executable, "-m", "pip", "install", 
+    "torch==2.1.0+cpu", 
+    "--extra-index-url", "https://download.pytorch.org/whl/cpu"
+], check=True)
+
 # Function to install missing packages inside Streamlit Cloud
 def install_missing_packages():
     packages = ["torch", "nltk"]
