@@ -9,4 +9,4 @@ rank-bm25
 transformers
 langchain
 langchain-community
-pip==25.0.1  # Force upgrade pip to avoid errors
+pip==25.0.1  # Force pip upgrade to avoid issues
