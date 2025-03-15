@@ -1,7 +1,6 @@
 streamlit
 PyPDF2
 numpy
-nltk
 faiss-cpu
 sentence-transformers
 rank-bm25
@@ -9,5 +8,6 @@ langchain
 langchain-community
 transformers==4.36.2
 pip==25.0.1
+nltk
 --extra-index-url https://download.pytorch.org/whl/cpu
 torch==2.1.0+cpu
