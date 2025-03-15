@@ -3,10 +3,12 @@ import PyPDF2
 import faiss
 import numpy as np
 import streamlit as st
-from sentence_transformers import SentenceTransformer
+from sentence_transformers import SentenceTransformer, CrossEncoder
 from rank_bm25 import BM25Okapi
 from transformers import pipeline
 import re
+import nltk
+from nltk.tokenize import sent_tokenize
 
 # Streamlit UI
 st.set_page_config(page_title="Financial RAG ChatBot", page_icon="📊", layout="centered")
@@ -15,26 +17,34 @@ st.markdown("Ask questions related to the last two years' financial statements."
 
 # Load embedding model
 embedding_model = SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2")
+reranker = CrossEncoder("cross-encoder/ms-marco-MiniLM-L-6-v2")
 
 # Load summarization model
 summarizer = pipeline("summarization")
 
 # PDF Directory
-dataset_folder = "staticFiles/Dataset"
-pdf_files = [os.path.join(dataset_folder, file) for file in os.listdir(dataset_folder) if file.endswith(".pdf")]
+dataset_folder = "."
 
-# Extract text from PDFs
-def extract_text_from_pdfs(pdf_files, chunk_size=100):
+# Extract text from PDFs with improved chunking
+def extract_text_from_pdfs(pdf_files):
     text_chunks = []
     for pdf_path in pdf_files:
         with open(pdf_path, "rb") as f:
             reader = PyPDF2.PdfReader(f)
             for page in reader.pages:
                 text = page.extract_text()
-                for i in range(0, len(text), chunk_size):
-                    text_chunks.append(text[i:i+chunk_size])
+                sentences = sent_tokenize(text)
+                chunk = []
+                for sentence in sentences:
+                    chunk.append(sentence)
+                    if len(" ".join(chunk)) > 300:
+                        text_chunks.append(" ".join(chunk))
+                        chunk = []
+                if chunk:
+                    text_chunks.append(" ".join(chunk))
     return text_chunks
 
+pdf_files = [os.path.join(dataset_folder, file) for file in os.listdir(dataset_folder) if file.endswith(".pdf")]
 text_chunks = extract_text_from_pdfs(pdf_files)
 tokenized_corpus = [chunk.split() for chunk in text_chunks]
 
@@ -48,15 +58,15 @@ embeddings = embedding_model.encode(text_chunks, convert_to_numpy=True)
 index = faiss.IndexFlatL2(embeddings.shape[1])
 index.add(embeddings)
 
-# Guard Rails - Validate user query
+# Guard Rails - Validate user query with LLM-based filtering
 def validate_query(query):
     prohibited_patterns = [
-        r'\b(violence|hate speech|illegal activity|politics|religion|stupid|dumb|bad|useless)\b',  # Filter sensitive topics & negative queries
-        r'[^a-zA-Z0-9\s?]'  # Restrict special characters
+        r'\b(violence|hate speech|illegal activity|politics|religion|stupid|dumb|bad|useless)\b',
+        r'[^a-zA-Z0-9\s?]',
+        r'\b(capital of|who is the president of|weather in|history of)\b'
     ]
-    for pattern in prohibited_patterns:
-        if re.search(pattern, query, re.IGNORECASE):
-            return False
+    if any(re.search(pattern, query, re.IGNORECASE) for pattern in prohibited_patterns):
+        return False
     return True
 
 # Hybrid Retrieval with Re-ranking
@@ -67,15 +77,22 @@ def hybrid_retrieval(query, top_k=5):
 
     query_embedding = embedding_model.encode([query], convert_to_numpy=True)
     distances, dense_top_k_indices = index.search(query_embedding, top_k)
-    dense_scores = 1 / (1 + distances)  # Convert distances to similarity scores
+    dense_scores = 1 / (1 + distances)
 
     retrieved_texts = {}
     for i, idx in enumerate(bm25_top_k_indices):
-        retrieved_texts[idx] = bm25_scores[idx] * 2.0  # Higher weight for BM25 relevance
+        retrieved_texts[idx] = bm25_scores[idx] * 2.0
     for i, idx in enumerate(dense_top_k_indices[0]):
-        retrieved_texts[idx] = retrieved_texts.get(idx, 0) + dense_scores[0][i] * 1.5  # Boost dense retrieval score
+        retrieved_texts[idx] = retrieved_texts.get(idx, 0) + dense_scores[0][i] * 1.5
 
     sorted_indices = sorted(retrieved_texts, key=retrieved_texts.get, reverse=True)
+
+    # Re-ranking with CrossEncoder
+    if sorted_indices:
+        query_doc_pairs = [[query, text_chunks[idx]] for idx in sorted_indices[:top_k]]
+        rerank_scores = reranker.predict(query_doc_pairs)
+        sorted_indices = [idx for _, idx in sorted(zip(rerank_scores, sorted_indices), reverse=True)]
+
     max_confidence_score = retrieved_texts[sorted_indices[0]] if sorted_indices else 0
     return [text_chunks[idx] for idx in sorted_indices[:top_k]], max_confidence_score
 
@@ -98,7 +115,7 @@ user_query = st.text_input("🔍 Ask a financial question:", "")
 if st.button("Submit"):
     if user_query:
         if not validate_query(user_query):
-            st.error("⚠️ Your query contains restricted, negative, or irrelevant content. Please enter a valid financial question.")
+            st.error("⚠️ Your query is not relevant to financial reports. Please enter a valid financial question.")
         else:
             with st.spinner("Searching and summarizing..."):
                 summarized_response, confidence_score = hybrid_retrieval_with_summary(user_query)
